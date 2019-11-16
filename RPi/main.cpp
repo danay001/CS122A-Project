@@ -1,5 +1,5 @@
 #include <iostream>
-#include <wiringPi.h>]
+#include <wiringPi.h>
 #include <wiringPiSPI.h>
 #include <chrono>
 
@@ -7,8 +7,12 @@ using namespace std::chrono;
 
 #define TRIG 4
 #define ECHO 5
+#define LEFT_BUMPER 6 
+#define RIGHT_BUMPER 25
 
-enum DetectSM{Wait, Bump, Wall} detect_state;
+enum DetectSM{Wait, Bump_Left, Bump_Right, Wall} detect_state;
+
+unsigned char buffer[100];
 
 unsigned long time_us(){
     microseconds us = duration_cast< microseconds >(system_clock::now().time_since_epoch());
@@ -44,8 +48,11 @@ void Obj_Detection(){
 	switch(detect_state){
 		case Wait:
 			curDist = dist_from_wall();
-            if(digitalRead(6)){
-				detect_state = Bump;
+           	 if(digitalRead(LEFT_BUMPER)){
+				detect_state = Bump_Left;
+			}
+			else if(digitalRead(RIGHT_BUMPER)){
+				detect_state = Bump_Right;
 			}
 			else if(curDist <= 5.0){
 				detect_state = Wall;
@@ -55,9 +62,9 @@ void Obj_Detection(){
 			}
 			break;
 
-		case Bump:
-			if(digitalRead(6)){
-				detect_state = Bump;
+		case Bump_Left:
+			if(digitalRead(LEFT_BUMPER)){
+				detect_state = Bump_Left;
 
 			}
 			else{
@@ -65,8 +72,22 @@ void Obj_Detection(){
 			}
 
 			break;
+		case Bump_Right:
+			if(digitalRead(RIGHT_BUMPER)){
+				detect_state = Bump_Right;
+			}
+			else{
+				detect_state = Wait;
+			}
+			break;
 		case Wall:
-			detect_state = Wait;
+			curDist = dist_from_wall();
+			if(curDist <= 5.0){
+				detect_state = Wall;
+			}
+			else{
+				detect_state = Wait;
+			}
 			break;
 
 
@@ -75,16 +96,26 @@ void Obj_Detection(){
 	switch(detect_state){
 		case Wait:
 			digitalWrite(0, 0);
+			buffer[0] = 0x01;
+			wiringPiSPIDataRW(0, buffer, 1);
 			break;
 
-		case Bump:
+		case Bump_Left:
 			digitalWrite(0, 1);
-			wiringPiSPIDataRW (0, 0x02, 8);
+			buffer[0] = 0x02;
+			wiringPiSPIDataRW (0, buffer, 1);
+			break;
+
+		case Bump_Right:
+			digitalWrite(0, 1);
+			buffer[0] = 0x03;
+			wiringPiSPIDataRW(0, buffer, 1);
 			break;
 
 		case Wall:
 			digitalWrite(0, 1);
-			wiringPiSPIDataRW (0, 0x03, 8);
+			buffer[0] = 0x03;
+			wiringPiSPIDataRW (0, buffer, 1);
 			break;
 
 	}
@@ -92,19 +123,25 @@ void Obj_Detection(){
 
 int main(){
 	wiringPiSetup();
-	wiringPiSPISetup(0, 8000000);
+	wiringPiSPISetup(0, 500000);
 	pinMode(TRIG, OUTPUT);
 	pinMode(ECHO, INPUT);
+	pinMode(0, OUTPUT);
+	pinMode(LEFT_BUMPER, INPUT);
+	pinMode(RIGHT_BUMPER, INPUT);
 
 	digitalWrite(TRIG, 0);
 	delay(2000);
 
-	wiringPiSPIDataRW (0, 0x01, 8);
+	buffer[0] = 0x01;
+	wiringPiSPIDataRW (0, buffer, 1);
 
 	//Initialize state variables
 	detect_state = Wait;
 
 	while(1){
+		buffer[0] = 0x01;
+		wiringPiSPIDataRW(0, buffer, 1);
 		Obj_Detection();
 
 		delay(50);
