@@ -6,7 +6,7 @@
  */ 
 
 #include <avr/io.h>
-#include "SPI.h"
+#include <SPI.h>
 #include "timer.h"
 
 enum MotorState{OFF, ON, RIGHT, LEFT}motor_state;
@@ -41,21 +41,25 @@ void MotorControl(){
 		break;
 		
 		case RIGHT: 
-			if(cnt >= 5){
+			if(cnt >= 30){
 				motor_state = ON;
+				cnt = 0;
 			}
 			else{
 				motor_state = RIGHT;
+				++cnt;
 			}
 		
 		break;
 		
 		case LEFT:
-			if(cnt >= 5){
+			if(cnt >= 30){
 				motor_state = ON;
+				cnt = 0;
 			}
 			else{
 				motor_state = LEFT;
+				++cnt;
 			}
 		
 		break;
