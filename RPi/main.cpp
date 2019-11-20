@@ -1,5 +1,6 @@
 #include <iostream>
-#include <wiringPi.h>
+#include <wiringPi.h>]
+#include <wiringPiSPI.h>
 #include <chrono>
 
 using namespace std::chrono;
@@ -10,8 +11,7 @@ using namespace std::chrono;
 enum DetectSM{Wait, Bump, Wall} detect_state;
 
 unsigned long time_us(){
-
-       	microseconds us = duration_cast< microseconds >(system_clock::now().time_since_epoch());
+    microseconds us = duration_cast< microseconds >(system_clock::now().time_since_epoch());
 	return us.count();
 }
 
@@ -44,7 +44,7 @@ void Obj_Detection(){
 	switch(detect_state){
 		case Wait:
 			curDist = dist_from_wall();
-                        if(digitalRead(6)){
+            if(digitalRead(6)){
 				detect_state = Bump;
 			}
 			else if(curDist <= 5.0){
@@ -79,10 +79,12 @@ void Obj_Detection(){
 
 		case Bump:
 			digitalWrite(0, 1);
+			wiringPiSPIDataRW (0, 0x02, 8);
 			break;
 
 		case Wall:
 			digitalWrite(0, 1);
+			wiringPiSPIDataRW (0, 0x03, 8);
 			break;
 
 	}
@@ -90,11 +92,14 @@ void Obj_Detection(){
 
 int main(){
 	wiringPiSetup();
+	wiringPiSPISetup(0, 8000000);
 	pinMode(TRIG, OUTPUT);
 	pinMode(ECHO, INPUT);
 
 	digitalWrite(TRIG, 0);
 	delay(2000);
+
+	wiringPiSPIDataRW (0, 0x01, 8);
 
 	//Initialize state variables
 	detect_state = Wait;
